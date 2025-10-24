@@ -1,16 +1,18 @@
 import "../chatwindow.css"
 import { useContext, useEffect, useState } from "react";
-import { MyContext } from "./MyContext.jsx";
+import { MyContext, useAuth } from "./MyContext.jsx";
 import { ScaleLoader } from "react-spinners";
 import Chat from './AiChat.jsx';
 import { Link } from "react-router-dom";
 
 export default function ChatWindow() {
   const { prompt,setNewChat, setPrompt, reply, setReply, currthreadid, setcurrthreadid, prevChats, setPrevChats, sidebarOpen, setSidebarOpen } = useContext(MyContext);
+  const { token, user, logout } = useAuth();
   const [loading, setloading] = useState(false);
   const [fetchCount, setFetchCount] = useState(0);
   const [curifixDropdownOpen, setCurifixDropdownOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [error, setError] = useState("");
 
   const getreply = async () => {
     // Prevent empty or whitespace-only messages
@@ -19,13 +21,20 @@ export default function ChatWindow() {
       return;
     }
 
+    if (!token) {
+      setError("Authentication required. Please log in again.");
+      return;
+    }
+
     setNewChat(false);
     setloading(true);
+    setError("");
 
     const options = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
       },
       body: JSON.stringify({
         message: prompt,
@@ -34,14 +43,27 @@ export default function ChatWindow() {
     };
 
     try {
-      console.log("req is hit ig");
+      console.log("Sending chat request...");
       let response = await fetch("http://localhost:3000/api/chat", options);
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError("Authentication failed. Please log in again.");
+        } else if (response.status === 500) {
+          setError("Server error. Please try again later.");
+        } else {
+          setError("Failed to get response. Please try again.");
+        }
+        return;
+      }
+
       let g = await response.json();
-      console.log(g.reply);
+      console.log("AI Response:", g.reply);
       setReply(g.reply);
       setFetchCount(fetchCount + 1);
     } catch (error) {
-      console.log("some error in fetching", error);
+      console.error("Error in chat request:", error);
+      setError("Network error. Please check your connection and try again.");
     }
 
     setloading(false);
@@ -174,8 +196,8 @@ export default function ChatWindow() {
           >
             <div className="py-2">
               <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900">John Doe</p>
-                <p className="text-xs text-gray-500">john.doe@example.com</p>
+                <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
+                <p className="text-xs text-gray-500">{user?.email || 'user@example.com'}</p>
               </div>
               <a href="#" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-all">
                 <i className="fa-solid fa-tachometer-alt mr-3 w-4"></i>
@@ -198,10 +220,10 @@ export default function ChatWindow() {
                 Preferences
               </a>
               <div className="border-t border-gray-100 mt-1 pt-1">
-                <a href="#" className="block px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-all">
+                <button onClick={logout} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700 transition-all">
                   <i className="fa-solid fa-sign-out-alt mr-3 w-4"></i>
                   Logout
-                </a>
+                </button>
               </div>
             </div>
           </div>
@@ -209,6 +231,14 @@ export default function ChatWindow() {
       </div>
       
       <Chat />
+      
+      {error && (
+        <div className="mx-4 lg:mx-0 mb-4">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+            {error}
+          </div>
+        </div>
+      )}
       
       <div className="chatinput px-4 lg:px-0">
         <div className="text-center relative">

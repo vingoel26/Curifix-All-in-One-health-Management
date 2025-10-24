@@ -1,6 +1,9 @@
 
 import { Link } from "react-router-dom"
+import { useAuth } from "./MyContext"
+
 export default function Navbar() {
+  const { user, logout, isAuthenticated } = useAuth()
 return  (
     <>
     <nav className="bg-white bg-gradient-to-b from-[#ffffff] to-transparent py-3 px-10">
@@ -22,15 +25,25 @@ return  (
         <li className="hover:bg-[#D4D4D5] rounded-md font-bold cursor-pointer px-5 pr-5 py-2 ">
           <Link to="/contact" className="">Contact</Link>
         </li>
-        <li className="hover:bg-[#D4D4D5] rounded-md font-bold cursor-pointer px-5 pr-5 py-2 ">
-          <Link to="/signup" className="">Signup</Link>
-        </li>
-        <li className="hover:bg-[#D4D4D4] rounded-md font-bold cursor-pointer px-5 py-2 ">
-          <Link to="/login" className="">Login</Link>
-        </li>
-
-        
-       
+        {!isAuthenticated() ? (
+          <>
+            <li className="hover:bg-[#D4D4D5] rounded-md font-bold cursor-pointer px-5 pr-5 py-2 ">
+              <Link to="/signup" className="">Signup</Link>
+            </li>
+            <li className="hover:bg-[#D4D4D4] rounded-md font-bold cursor-pointer px-5 py-2 ">
+              <Link to="/login" className="">Login</Link>
+            </li>
+          </>
+        ) : (
+          <>
+            <li className="hover:bg-[#D4D4D5] rounded-md font-bold cursor-pointer px-5 pr-5 py-2 ">
+              <span className="text-green-600">Welcome, {user?.name}</span>
+            </li>
+            <li className="hover:bg-[#D4D4D4] rounded-md font-bold cursor-pointer px-5 py-2 ">
+              <button onClick={logout} className="">Logout</button>
+            </li>
+          </>
+        )}
       </ul>
       </div>
       <div>

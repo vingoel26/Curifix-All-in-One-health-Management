@@ -4,11 +4,12 @@ import Footer from "../components/Footer";
 import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../components/MyContext";
 
  
 export default function Signup() {
-
   const navigate= useNavigate();
+  const { login } = useAuth();
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-lime-50 relative overflow-hidden">
       <Navbar />
@@ -72,10 +73,35 @@ export default function Signup() {
             
             <div className="flex justify-center mt-6 text-center">
               <GoogleLogin
-                onSuccess={(credentialResponse) => {
-                  const decoded = jwtDecode(credentialResponse.credential);
-                  console.log("Google Signup Success:", decoded);
-                  navigate("/"); 
+                onSuccess={async (credentialResponse) => {
+                  try {
+                    const decoded = jwtDecode(credentialResponse.credential);
+                    console.log("Google Signup Success:", decoded);
+                    
+                    // Send Google auth data to backend
+                    const response = await fetch("http://localhost:3000/api/auth/google-auth", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        email: decoded.email,
+                        name: decoded.name,
+                        googleId: decoded.sub
+                      }),
+                    });
+
+                    const data = await response.json();
+                    
+                    if (response.ok) {
+                      login(data.user, data.token);
+                      navigate("/");
+                    } else {
+                      console.error('Google auth failed:', data.error);
+                    }
+                  } catch (error) {
+                    console.error('Google auth error:', error);
+                  }
                 }}
                 onError={() => {
                   console.log("Google Signup Failed");

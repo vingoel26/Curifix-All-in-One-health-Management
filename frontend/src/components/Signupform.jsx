@@ -1,24 +1,87 @@
 import { useState } from "react"
-import {Link} from "react-router-dom"
+import {Link, useNavigate} from "react-router-dom"
+import { useAuth } from "./MyContext"
 
 export function SignupForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [password, setPassword] = useState("")
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: ""
+  })
+  const [error, setError] = useState("")
+  const navigate = useNavigate()
+  const { login } = useAuth()
 
   const passwordRequirements = [
-    { text: "At least 8 characters", met: password.length >= 8 },
-    { text: "Contains uppercase letter", met: /[A-Z]/.test(password) },
-    { text: "Contains lowercase letter", met: /[a-z]/.test(password) },
-    { text: "Contains number", met: /\d/.test(password) },
+    { text: "At least 8 characters", met: formData.password.length >= 8 },
+    { text: "Contains uppercase letter", met: /[A-Z]/.test(formData.password) },
+    { text: "Contains lowercase letter", met: /[a-z]/.test(formData.password) },
+    { text: "Contains number", met: /\d/.test(formData.password) },
   ]
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.id]: e.target.value
+    })
+    setError("") // Clear error when user types
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsLoading(false)
+    setError("")
+
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match")
+      setIsLoading(false)
+      return
+    }
+
+    // Check password requirements
+    const allRequirementsMet = passwordRequirements.every(req => req.met)
+    if (!allRequirementsMet) {
+      setError("Password does not meet all requirements")
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      const response = await fetch("http://localhost:3000/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: `${formData.firstName} ${formData.lastName}`,
+          email: formData.email,
+          password: formData.password
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Use auth context to store user data
+        login(data.user, data.token)
+        
+        // Navigate to home page
+        navigate("/")
+      } else {
+        setError(data.error || "Registration failed")
+      }
+    } catch (error) {
+      console.error("Registration error:", error)
+      setError("Network error. Please try again.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -32,6 +95,8 @@ export function SignupForm() {
             id="firstName"
             type="text"
             placeholder="John"
+            value={formData.firstName}
+            onChange={handleChange}
             className="w-full text-black h-11 px-3 bg-white/70 border border-gray-200 focus:border-lime-400 focus:ring-2 focus:ring-lime-400/20 rounded-lg outline-none transition-all"
             required
           />
@@ -44,6 +109,8 @@ export function SignupForm() {
             id="lastName"
             type="text"
             placeholder="Doe"
+            value={formData.lastName}
+            onChange={handleChange}
             className="w-full text-black h-11 px-3 bg-white/70 border border-gray-200 focus:border-lime-400 focus:ring-2 focus:ring-lime-400/20 rounded-lg outline-none transition-all"
             required
           />
@@ -58,6 +125,8 @@ export function SignupForm() {
           id="email"
           type="email"
           placeholder="john@example.com"
+          value={formData.email}
+          onChange={handleChange}
           className="w-full text-black h-11 px-3 bg-white/70 border border-gray-200 focus:border-lime-400 focus:ring-2 focus:ring-lime-400/20 rounded-lg outline-none transition-all"
           required
         />
@@ -73,8 +142,8 @@ export function SignupForm() {
             type={showPassword ? "text" : "password"}
             placeholder="Create a strong password"
             className="w-full text-black h-11 px-3 pr-10 bg-white/70 border border-gray-200 focus:border-lime-400 focus:ring-2 focus:ring-lime-400/20 rounded-lg outline-none transition-all"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={formData.password}
+            onChange={handleChange}
             required
           />
           <button
@@ -85,7 +154,7 @@ export function SignupForm() {
             {showPassword ? "👁️" : "👁️‍🗨️"}
           </button>
         </div>
-        {password && (
+        {formData.password && (
           <div className="space-y-2 mt-3">
             {passwordRequirements.map((req, index) => (
               <div key={index} className="flex items-center space-x-2">
@@ -112,6 +181,8 @@ export function SignupForm() {
             id="confirmPassword"
             type={showConfirmPassword ? "text" : "password"}
             placeholder="Confirm your password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
             className="text-black w-full h-11 px-3 pr-10 bg-white/70 border border-gray-200 focus:border-lime-400 focus:ring-2 focus:ring-lime-400/20 rounded-lg outline-none transition-all"
             required
           />
@@ -134,15 +205,21 @@ export function SignupForm() {
         />
         <label htmlFor="terms" className="text-sm text-gray-600 leading-relaxed">
           I agree to the{" "}
-          <Link href="/terms" className="text-lime-600 hover:text-lime-500 transition-colors">
+          <Link to="/terms" className="text-lime-600 hover:text-lime-500 transition-colors">
             Terms of Service
           </Link>{" "}
           and{" "}
-          <Link href="/privacy" className="text-lime-600 hover:text-lime-500 transition-colors">
+          <Link to="/privacy" className="text-lime-600 hover:text-lime-500 transition-colors">
             Privacy Policy
           </Link>
         </label>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
 
       <button
         type="submit"

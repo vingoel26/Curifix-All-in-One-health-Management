@@ -5,21 +5,21 @@ import Signup from "./pages/Signup"
 import Contact from "./pages/Contact"
 import Navbar from "./components/Navbar"
 import Home from "./pages/Home"
+import { AuthProvider } from "./components/MyContext"
 import './App.css'
+
 function App() {
   
   return (
-    <>
-    
-    <Routes>
-      <Route path="/chat" element={<Chat />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/contact" element={<Contact />} />
-      <Route path="/" element={<Home />} />
-    </Routes>
-    
-    </>
+    <AuthProvider>
+      <Routes>
+        <Route path="/chat" element={<Chat />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="/" element={<Home />} />
+      </Routes>
+    </AuthProvider>
   )
 }
 
